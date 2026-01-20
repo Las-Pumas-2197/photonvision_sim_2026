@@ -18,6 +18,7 @@ import static edu.wpi.first.wpilibj2.command.Commands.*;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.Vision;
 import frc.robot.subsystems.Swerve;
+import frc.robot.utils.BlackBox;
 import frc.robot.utils.Telemetry;
 
 import static frc.robot.utils.Constants.OIConstants.*;
@@ -59,6 +60,7 @@ public class RobotContainer {
   // triggers
   private void configureBindings() {
     m_joystick.back().onTrue(runOnce(() -> m_swerve.getCurrentCommand().cancel()));
+    m_joystick.start().whileTrue(run(() -> BlackBox.DataRecorder.recordData("heading", m_swerve.getGyroHeading())));
   }
 
   /**
