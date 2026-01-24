@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 
@@ -45,8 +46,8 @@ public class RobotContainer {
     m_swerve.runAutoBuilder();
 
     // autos
-    m_autochooser.setDefaultOption("no auto", print("WARNING: no auto scheduled"));
-    // m_autochooser.setDefaultOption("simple square", simpleSquareAuto());
+    // m_autochooser.setDefaultOption("no auto", print("WARNING: no auto scheduled"));
+    m_autochooser.setDefaultOption("simple square", simpleSquareAuto());
 
     m_autochooser.addOption("autoalign reef A", autoAlignReef(18));
     m_autochooser.addOption("simple square", simpleSquareAuto());
@@ -96,13 +97,22 @@ public class RobotContainer {
         m_swerve.pathfindToPose(k_redreefA, true));
   }
 
-  /** Simple square pattern auto - drives robot in a 2m x 2m square. */
-  private SequentialCommandGroup simpleSquareAuto() {
-    return new SequentialCommandGroup(
+  /** Simple square pattern auto */
+  private Command simpleSquareAuto() {
+    // drive sequence
+    SequentialCommandGroup driveSequence = new SequentialCommandGroup(
         m_swerve.pathfindToPose(k_squarePoint1, false),
         m_swerve.pathfindToPose(k_squarePoint2, false),
         m_swerve.pathfindToPose(k_squarePoint3, false),
         m_swerve.pathfindToPose(k_squarePoint4, false));
+
+    // run turret tracking test
+    Command turretTrackingCommand = run(() -> {
+      m_vision.getTurretCamera().aimAtCenterOfTargets(m_swerve.getPose());
+    });
+
+    // Run turret tracking in parallel with driving, ending when drive completes
+    return new ParallelDeadlineGroup(driveSequence, turretTrackingCommand);
   }
 
   /** The selected autonomous command. */

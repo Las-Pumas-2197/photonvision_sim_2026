@@ -30,6 +30,9 @@ public class Vision extends SubsystemBase {
   /** Cameraaaaaaas. */
   private final List<VisionCamera> m_cameras = new ArrayList<>();
 
+  /** Turret camera for tracking base tags. */
+  private final TurretCamera m_turretcamera;
+
   private VisionSystemSim m_visionsim;
 
   public Vision() {
@@ -39,6 +42,9 @@ public class Vision extends SubsystemBase {
       m_cameras.add(new VisionCamera(k_cameranames.get(num), k_cameraintrinsics.get(num)));
     }
 
+    // instantiate turret camera
+    m_turretcamera = new TurretCamera(k_turretcameraname, k_turretbasetransform);
+
     // IT'S SIMULATIN TIME
     // declare vision sim, iterate and add cameras, add fiducials to sim field
     if (RobotBase.isSimulation()) {
@@ -46,6 +52,8 @@ public class Vision extends SubsystemBase {
       for (int num = 0; num < m_cameras.size(); num++) {
         m_visionsim.addCamera(m_cameras.get(num).getSimInstance(), k_cameraintrinsics.get(num));
       }
+      // add turret camera to sim
+      m_visionsim.addCamera(m_turretcamera.getSimInstance(), m_turretcamera.getTurretTransform());
       m_visionsim.addAprilTags(k_fieldlayout);
     }
   }
@@ -124,11 +132,20 @@ public class Vision extends SubsystemBase {
     return m_cameras;
   }
 
+  /** Returns the turret camera instance. */
+  public TurretCamera getTurretCamera() {
+    return m_turretcamera;
+  }
+
   /** Used to update the pose of the vision sim periodically.
-   * 
+   *
    * @param pose The simulation's physical pose of the robot.
    */
   public void updatePose(Pose2d pose) {
+    // update turret camera transform based on current turret angle
+    if (RobotBase.isSimulation()) {
+      m_visionsim.adjustCamera(m_turretcamera.getSimInstance(), m_turretcamera.getTurretTransform());
+    }
     m_visionsim.update(pose);
   }
 

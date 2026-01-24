@@ -101,9 +101,20 @@ public class Constants {
         .loadField(AprilTagFields.k2026RebuiltAndymark);
 
     // standard deviations
-    public static final Matrix<N3, N1> k_singletagstddevs = VecBuilder.fill(0.05, 0.05, 0.05);
-    public static final Matrix<N3, N1> k_multitagstddevs = VecBuilder.fill(0.005, 0.005, 0.005);
+    public static final Matrix<N3, N1> k_singletagstddevs = VecBuilder.fill(0.01, 0.01, 0.01);
+    public static final Matrix<N3, N1> k_multitagstddevs = VecBuilder.fill(0.00, 0.00, 0.00);
+    // public static final Matrix<N3, N1> k_multitagstddevs = VecBuilder.fill(0.005, 0.005, 0.005);
     public static final Matrix<N3, N1> k_ignorestddevs = VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+
+    // turret camera configuration
+    public static final String k_turretcameraname = "turret_camera";
+    public static final Transform3d k_turretbasetransform = new Transform3d(
+        0, // centered on robot X
+        0, // centered on robot Y
+        Units.inchesToMeters(12), // elevated 12 inches
+        new Rotation3d(0, Units.degreesToRadians(-15), 0) // tilted down 15 degrees
+    );
+    public static final List<Integer> k_turrettargetids = List.of(18, 27, 26, 25, 24, 21);
   }
 
   public static final class PathfindingConstants {
