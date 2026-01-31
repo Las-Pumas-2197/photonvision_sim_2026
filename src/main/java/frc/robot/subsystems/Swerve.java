@@ -147,16 +147,29 @@ public class Swerve extends SubsystemBase {
   }
 
   /** Pathfinds to a specifed pose.
-   * 
+   *
    * @param targetpose The pose to pathfind to.
    * @param unlimited Pass true if unlimited constraints are requested.
    * @return The composed pathfinding command.
    */
   public Command pathfindToPose(Pose2d targetpose, boolean unlimited) {
+    return pathfindToPose(targetpose, unlimited, 0.0);
+  }
+
+  /** Pathfinds to a specifed pose with goal end velocity.
+   *
+   * @param targetpose The pose to pathfind to.
+   * @param unlimited Pass true if unlimited constraints are requested.
+   * @param goalEndVelocity The velocity the robot should have when reaching the goal (m/s).
+   *                        Use non-zero to pass through waypoints without stopping.
+   * @return The composed pathfinding command.
+   */
+  public Command pathfindToPose(Pose2d targetpose, boolean unlimited, double goalEndVelocity) {
     if (unlimited) {
       return AutoBuilder.pathfindToPose(
           targetpose,
-          PathConstraints.unlimitedConstraints(12));
+          PathConstraints.unlimitedConstraints(12),
+          goalEndVelocity);
     } else {
       return AutoBuilder.pathfindToPose(
           targetpose,
@@ -164,7 +177,8 @@ public class Swerve extends SubsystemBase {
               3,
               6,
               Math.PI * 4,
-              Math.PI * 8));
+              Math.PI * 8),
+          goalEndVelocity);
     }
   }
 

@@ -20,17 +20,18 @@ import edu.wpi.first.math.util.Units;
 
 public class Constants {
   public class SwerveDriveConstants {
-    public static final double k_mass = Units.lbsToKilograms(125);
+    public static final double k_mass = Units.lbsToKilograms(115);
     public static final double k_wheelradius = Units.inchesToMeters(2);
     public static final double k_wheelcircumference = 2 * Math.PI * k_wheelradius;
-    public static final double k_trackwidth = Units.inchesToMeters(24);
-    public static final double k_moduleradius = Math.hypot(k_trackwidth / 2, k_trackwidth / 2);
+    public static final double k_framelength = Units.inchesToMeters(33); // front to back (X)
+    public static final double k_framewidth = Units.inchesToMeters(22); // side to side (Y)
+    public static final double k_moduleradius = Math.hypot(k_framelength / 2, k_framewidth / 2);
     public static final double k_MOI = 0.5 * k_mass * Math.pow(k_moduleradius, 2);
     public static final double k_drivegearratio = 5.27;
     public static final double k_turngearratio = 26;
     public static final double k_drivemotormaxRPM = 6784;
     public static final double k_maxlinspeed = (k_drivemotormaxRPM / k_drivegearratio) * k_wheelcircumference / 60; // meters/sec
-    public static final double k_maxrotspeed = (2 * k_maxlinspeed) / k_trackwidth;
+    public static final double k_maxrotspeed = (2 * k_maxlinspeed) / k_moduleradius;
     public static final Pose2d k_initpose = new Pose2d(2, 2, new Rotation2d());
   }
 
@@ -52,15 +53,6 @@ public class Constants {
                 0,
                 Units.degreesToRadians(-20),
                 Units.degreesToRadians(45))),
-        new Transform3d(
-            Units.inchesToMeters(12),
-            0,
-            Units.inchesToMeters(8),
-            new Rotation3d(
-                0,
-                // adjusted this one to point upwards
-                Units.degreesToRadians(-25),
-                0)),
         new Transform3d(
             Units.inchesToMeters(12),
             Units.inchesToMeters(-12),
@@ -90,7 +82,6 @@ public class Constants {
     // camera names
     public static final List<String> k_cameranames = List.of(
       "frontleft_camera",
-      "frontcenter_camera",
       "frontright_camera",
       "rearleft_camera",
       "rearright_camera"
@@ -120,6 +111,9 @@ public class Constants {
   public static final class PathfindingConstants {
     public static final Pose2d k_bluereefA = new Pose2d(1, 4, new Rotation2d(Units.degreesToRadians(0)));
     public static final Pose2d k_redreefA = new Pose2d(16, 4, new Rotation2d(Units.degreesToRadians(0)));
+
+    // Field center (field is 16.54m x 8.07m)
+    public static final Pose2d k_fieldCenter = new Pose2d(8.27, 4.0, new Rotation2d(0));
 
     // Simple square auto waypoints (starting from initial pose at 2,2)
     public static final Pose2d k_squarePoint1 = new Pose2d(5, 2, new Rotation2d(0));

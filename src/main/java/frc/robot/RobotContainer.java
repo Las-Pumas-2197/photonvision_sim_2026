@@ -24,6 +24,11 @@ import frc.robot.utils.Telemetry;
 
 import static frc.robot.utils.Constants.OIConstants.*;
 import static frc.robot.utils.Constants.PathfindingConstants.*;
+import static frc.robot.utils.Constants.SwerveDriveConstants.k_initpose;
+import static frc.robot.utils.Constants.VisionConstants.k_fieldlayout;
+
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 
 import com.pathplanner.lib.pathfinding.LocalADStar;
 import com.pathplanner.lib.pathfinding.Pathfinding;
@@ -46,11 +51,11 @@ public class RobotContainer {
     m_swerve.runAutoBuilder();
 
     // autos
-    // m_autochooser.setDefaultOption("no auto", print("WARNING: no auto scheduled"));
-    m_autochooser.setDefaultOption("simple square", simpleSquareAuto());
+    m_autochooser.setDefaultOption("simple drive test", driveUnderTagAuto(28));
+    // m_autochooser.setDefaultOption("simple drive test", simpleSquareAuto());
 
+    m_autochooser.addOption("square", simpleSquareAuto());
     m_autochooser.addOption("autoalign reef A", autoAlignReef(18));
-    m_autochooser.addOption("simple square", simpleSquareAuto());
     SmartDashboard.putData(m_autochooser);
 
     // default commands for subsystems
@@ -95,6 +100,62 @@ public class RobotContainer {
     return new SequentialCommandGroup(
         m_swerve.pathfindToPose(k_bluereefA, true),
         m_swerve.pathfindToPose(k_redreefA, true));
+  }
+
+  /**
+   * Auto that cycles through a tag waypoint to the field center and back.
+   * Path: Start -> Under Tag -> Field Center -> Under Tag -> Start
+   * Robot passes through waypoints continuously without stopping.
+   */
+  private Command driveUnderTagAuto(int tagId) {
+    // Get tag pose from field layout
+    var tagPose = k_fieldlayout.getTagPose(tagId);
+    if (tagPose.isEmpty()) {
+      return print("ERROR: Tag " + tagId + " not found in field layout");
+    }
+
+    // Waypoint under the tag
+    Pose2d waypointPose = new Pose2d(
+        tagPose.get().getX(),
+        tagPose.get().getY(),
+        new Rotation2d(0)
+    );
+
+    // Field center pose
+    Pose2d fieldCenterPose = k_fieldCenter;
+
+    // Velocity to maintain through waypoints m/s
+    final double waypointVelocity = 2.0;
+
+    // Build the cycle sequence
+    return sequence(
+        defer(() -> m_swerve.pathfindToPose(
+            new Pose2d(waypointPose.getX(), waypointPose.getY(), m_swerve.getPose().getRotation()),
+            true,
+            waypointVelocity
+        ), java.util.Set.of(m_swerve)),
+        defer(() -> m_swerve.pathfindToPose(
+            new Pose2d(fieldCenterPose.getX(), fieldCenterPose.getY(), m_swerve.getPose().getRotation()),
+            true,
+            0.0 // stop at field center
+        ), java.util.Set.of(m_swerve)),
+        defer(() -> m_swerve.pathfindToPose(
+            new Pose2d(waypointPose.getX(), waypointPose.getY(), m_swerve.getPose().getRotation()),
+            true,
+            waypointVelocity
+        ), java.util.Set.of(m_swerve)),
+        defer(() -> m_swerve.pathfindToPose(
+            new Pose2d(k_initpose.getX(), k_initpose.getY(), m_swerve.getPose().getRotation()),
+            true,
+            0.0
+        ), java.util.Set.of(m_swerve))
+    );
+  }
+
+  /** Simple drive test - no pathfinding, just drives forward for 2 seconds. */
+  private Command simpleDriveTest() {
+    return run(() -> m_swerve.drive(new ChassisSpeeds(1.0, 0, 0)), m_swerve)
+        .withTimeout(2.0);
   }
 
   /** Simple square pattern auto */
