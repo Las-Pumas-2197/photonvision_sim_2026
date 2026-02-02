@@ -51,8 +51,8 @@ public class RobotContainer {
     m_swerve.runAutoBuilder();
 
     // autos
-    m_autochooser.setDefaultOption("simple drive test", driveUnderTagAuto(28));
-    // m_autochooser.setDefaultOption("simple drive test", simpleSquareAuto());
+    // m_autochooser.setDefaultOption("simple drive test", driveUnderTagAuto(28));
+    m_autochooser.setDefaultOption("simple drive test", simpleSquareAuto());
 
     m_autochooser.addOption("square", simpleSquareAuto());
     m_autochooser.addOption("autoalign reef A", autoAlignReef(18));
@@ -86,14 +86,20 @@ public class RobotContainer {
     return cmd;
   }
 
-  /** Composed default command for swerve subsystem. */
+  /** Composed default command for swerve subsystem with turret tracking. */
   private Command swerveDefaultCommand() {
-    return new RunCommand(
+    Command driveCommand = new RunCommand(
         () -> m_swerve.drive(new ChassisSpeeds(
             MathUtil.applyDeadband(m_joystick.getLeftX(), 0.2) * k_maxlinspeedteleop,
             -MathUtil.applyDeadband(m_joystick.getLeftY(), 0.2) * k_maxlinspeedteleop,
             -MathUtil.applyDeadband(m_joystick.getRightX(), 0.2) * k_maxrotspeedteleop)),
         m_swerve);
+
+    Command turretTrackingCommand = run(() -> {
+      m_vision.getTurretCamera().aimAtClosestTarget(m_swerve.getPose());
+    });
+
+    return new ParallelCommandGroup(driveCommand, turretTrackingCommand);
   }
 
   /** Autoalign sequence for the reef. */
@@ -168,9 +174,18 @@ public class RobotContainer {
       17, 28
   );
 
+  // Final positions after exiting each tunnel tag
+  private static final java.util.Map<Integer, Pose2d> TUNNEL_EXIT_POSITIONS = java.util.Map.of(
+      17, new Pose2d(8, 1, Rotation2d.fromDegrees(90)),
+      28, new Pose2d(1.5, 1, Rotation2d.fromDegrees(180)),
+      22, new Pose2d(8, 7, Rotation2d.fromDegrees(270)),
+      23, new Pose2d(1.5, 7, Rotation2d.fromDegrees(180))
+  );
+
   /**
    * Creates a command that crosses through the closest tunnel to the other side.
-   * Finds the nearest tunnel entrance and pathfinds to the exit on the other side.
+   * Passes through the tunnel without stopping, then continues to final position.
+   * Turret tracks targets throughout the pathfinding sequence.
    */
   private Command createCycleCommand() {
     return defer(() -> {
@@ -198,13 +213,24 @@ public class RobotContainer {
       // Get the exit tag on the other side of this tunnel
       int exitTag = TUNNEL_PAIRS.get(closestTag);
       Pose2d exitWaypoint = getTagWaypoint(exitTag);
+      Pose2d finalPosition = TUNNEL_EXIT_POSITIONS.get(exitTag);
 
-      if (exitWaypoint == null) {
+      if (exitWaypoint == null || finalPosition == null) {
         return print("ERROR: Could not find exit tag " + exitTag);
       }
 
-      // Cross through the tunnel to the other side
-      return m_swerve.pathfindToPose(exitWaypoint, true);
+      // Cross through tunnel without stopping, then continue to final position
+      Command pathfindSequence = sequence(
+          m_swerve.pathfindToPose(exitWaypoint, true, 2.0),
+          m_swerve.pathfindToPose(finalPosition, true)
+      );
+
+      // Turret tracking runs in parallel with pathfinding
+      Command turretTrackingCommand = run(() -> {
+        m_vision.getTurretCamera().aimAtClosestTarget(m_swerve.getPose());
+      });
+
+      return new ParallelDeadlineGroup(pathfindSequence, turretTrackingCommand);
     }, java.util.Set.of(m_swerve));
   }
 

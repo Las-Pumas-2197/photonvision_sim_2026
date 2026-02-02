@@ -116,8 +116,8 @@ public class Constants {
     public static final Pose2d k_fieldCenter = new Pose2d(8.27, 4.0, new Rotation2d(0));
 
     // Simple square auto waypoints (starting from initial pose at 2,2)
-    public static final Pose2d k_squarePoint1 = new Pose2d(5, 2, new Rotation2d(0));
-    public static final Pose2d k_squarePoint2 = new Pose2d(5, 8, new Rotation2d(Units.degreesToRadians(90)));
+    public static final Pose2d k_squarePoint1 = new Pose2d(1.5, 1, new Rotation2d(0));
+    public static final Pose2d k_squarePoint2 = new Pose2d(1.5, 7, new Rotation2d(Units.degreesToRadians(180)));
     public static final Pose2d k_squarePoint3 = new Pose2d(1, 8, new Rotation2d(Units.degreesToRadians(180)));
     public static final Pose2d k_squarePoint4 = new Pose2d(2, 1, new Rotation2d(Units.degreesToRadians(270)));
   }
