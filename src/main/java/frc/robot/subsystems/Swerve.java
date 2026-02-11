@@ -137,6 +137,14 @@ public class Swerve extends SubsystemBase {
     }
   }
 
+  /**
+   * Returns the maple-sim SwerveDriveSimulation for physics interaction.
+   * Use this to access the robot's physics body in the SimulatedArena.
+   */
+  public Optional<swervelib.simulation.ironmaple.simulation.drivesims.SwerveDriveSimulation> getMapleSimDrive() {
+    return m_swervedrive.getMapleSimDrive();
+  }
+
   /** Adds the current queue of vision measurements to the pose estimator. */
   public void addVisionMeasurements(List<Pair<Optional<EstimatedRobotPose>, Matrix<N3, N1>>> estimates) {
     for (var estimate : estimates) {
