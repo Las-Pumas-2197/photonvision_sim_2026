@@ -244,6 +244,38 @@ public class LimelightTurretCamera extends SubsystemBase {
   }
 
   /**
+   * Calculates the angle to aim at a fixed field position.
+   * @param robotPose The current robot pose.
+   * @param targetPose The field position to aim at.
+   * @return The yaw angle in radians to aim at the target.
+   */
+  public double calculateAngleToFieldPose(Pose2d robotPose, Pose2d targetPose) {
+    double robotX = robotPose.getX();
+    double robotY = robotPose.getY();
+    double targetX = targetPose.getX();
+    double targetY = targetPose.getY();
+
+    double angleToTarget = Math.atan2(targetY - robotY, targetX - robotX);
+    double robotHeading = robotPose.getRotation().getRadians();
+    double turretAngle = angleToTarget - robotHeading;
+
+    // Normalize to -PI to PI
+    while (turretAngle > Math.PI) turretAngle -= 2 * Math.PI;
+    while (turretAngle < -Math.PI) turretAngle += 2 * Math.PI;
+
+    return turretAngle;
+  }
+
+  /**
+   * Aims the turret at a fixed field position.
+   * @param robotPose The current robot pose.
+   * @param targetPose The field position to aim at.
+   */
+  public void aimAtFieldPose(Pose2d robotPose, Pose2d targetPose) {
+    setTurretYaw(calculateAngleToFieldPose(robotPose, targetPose));
+  }
+
+  /**
    * Returns whether a target from the turret target list is currently visible.
    */
   public boolean hasVisibleTarget() {

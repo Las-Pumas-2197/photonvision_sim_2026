@@ -96,7 +96,7 @@ public class RobotContainer {
         m_swerve);
 
     Command turretTrackingCommand = run(() -> {
-      m_vision.getTurretCamera().aimAtClosestTarget(m_swerve.getPose());
+      m_vision.getTurretCamera().aimAtFieldPose(m_swerve.getPose(), k_basinCenter);
     });
 
     return new ParallelCommandGroup(driveCommand, turretTrackingCommand);
@@ -236,7 +236,7 @@ public class RobotContainer {
 
       // Turret tracking runs in parallel with pathfinding
       Command turretTrackingCommand = run(() -> {
-        m_vision.getTurretCamera().aimAtClosestTarget(m_swerve.getPose());
+        m_vision.getTurretCamera().aimAtFieldPose(m_swerve.getPose(), k_basinCenter);
       });
 
       // Cancel sequence if manual drive input detected
