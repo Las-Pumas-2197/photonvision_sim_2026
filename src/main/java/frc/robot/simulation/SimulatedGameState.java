@@ -204,7 +204,8 @@ public class SimulatedGameState {
     /**
      * Shoots fuel from the turret at the calculated velocity needed to hit the hub.
      * Uses the turret's yaw angle to determine shooting direction and calculates
-     * the required exit velocity based on distance to the target hub.
+     * the required exit velocity based on lead-corrected distance to the target hub.
+     * Accounts for robot velocity when calculating both aim direction and exit velocity.
      *
      * @param turretYaw The turret yaw angle in radians (relative to robot heading)
      */
@@ -221,20 +222,47 @@ public class SimulatedGameState {
         Translation3d targetHub = targetBlueHub ? BLUE_HUB_TARGET : RED_HUB_TARGET;
         Translation3d spawnPosition = targetBlueHub ? BLUE_HUB_SPAWN : RED_HUB_SPAWN;
 
-        // Calculate horizontal distance to hub
-        double horizontalDistance = robotPose.getTranslation().getDistance(
-            new Translation2d(targetHub.getX(), targetHub.getY()));
+        // Iterative lead correction - converges on correct aim point and velocity
+        // As we aim at a different point, distance changes, ToF changes, lead changes
+        Translation2d robotPos = robotPose.getTranslation();
+        Translation2d targetPos = new Translation2d(targetHub.getX(), targetHub.getY());
+        double rawDistance = robotPos.getDistance(targetPos);
 
-        // Calculate required exit velocity
-        double exitVelocity = calculateRequiredVelocity(
-            horizontalDistance,
-            targetHub.getZ(),
-            TURRET_HEIGHT,
-            TURRET_LAUNCH_ANGLE
-        );
+        Translation2d adjustedTarget = targetPos;
+        double exitVelocity = MIN_EXIT_VELOCITY;
+        double timeOfFlight = 0;
+        double effectiveDistance = rawDistance;
 
-        // Clamp velocity to safe range
+        // 3 iterations for convergence on aim point
+        for (int i = 0; i < 3; i++) {
+            effectiveDistance = robotPos.getDistance(adjustedTarget);
+
+            // Calculate velocity needed for this distance
+            exitVelocity = calculateRequiredVelocity(
+                effectiveDistance, targetHub.getZ(), TURRET_HEIGHT, TURRET_LAUNCH_ANGLE);
+            exitVelocity = Math.max(MIN_EXIT_VELOCITY, Math.min(MAX_EXIT_VELOCITY, exitVelocity));
+
+            // Calculate time of flight with this velocity
+            double horizontalVelocity = exitVelocity * Math.cos(TURRET_LAUNCH_ANGLE);
+            timeOfFlight = effectiveDistance / horizontalVelocity;
+
+            // Calculate drift due to robot velocity during flight
+            double driftX = speeds.vxMetersPerSecond * timeOfFlight;
+            double driftY = speeds.vyMetersPerSecond * timeOfFlight;
+
+            // Update adjusted aim point
+            adjustedTarget = new Translation2d(
+                targetPos.getX() - driftX,
+                targetPos.getY() - driftY
+            );
+        }
+
+        // Final velocity calculation using converged effective distance
+        effectiveDistance = robotPos.getDistance(adjustedTarget);
+        exitVelocity = calculateRequiredVelocity(
+            effectiveDistance, targetHub.getZ(), TURRET_HEIGHT, TURRET_LAUNCH_ANGLE);
         exitVelocity = Math.max(MIN_EXIT_VELOCITY, Math.min(MAX_EXIT_VELOCITY, exitVelocity));
+        timeOfFlight = effectiveDistance / (exitVelocity * Math.cos(TURRET_LAUNCH_ANGLE));
 
         // Calculate shooting direction: robot heading + turret yaw
         Rotation2d shootingDirection = robotPose.getRotation().plus(new Rotation2d(turretYaw));
@@ -281,7 +309,9 @@ public class SimulatedGameState {
         fuelShot++;
         SmartDashboard.putNumber("Sim/FuelShot", fuelShot);
         SmartDashboard.putNumber("Sim/LastExitVelocity", exitVelocity);
-        SmartDashboard.putNumber("Sim/LastDistance", horizontalDistance);
+        SmartDashboard.putNumber("Sim/RawDistance", rawDistance);
+        SmartDashboard.putNumber("Sim/EffectiveDistance", effectiveDistance);
+        SmartDashboard.putNumber("Sim/TimeOfFlight", timeOfFlight);
     }
 
     /**

@@ -111,6 +111,10 @@ public class RobotContainer {
         return cmd;
     }
 
+    // Turret shooting constants for lead correction
+    private static final double TURRET_EXIT_VELOCITY = 8.0; // Average exit velocity (m/s)
+    private static final double TURRET_LAUNCH_ANGLE = Math.toRadians(65); // Launch angle
+
     private Command swerveDefaultCommand() {
         Command driveCommand = new RunCommand(
             () -> m_swerve.drive(new ChassisSpeeds(
@@ -119,8 +123,15 @@ public class RobotContainer {
                 -MathUtil.applyDeadband(m_joystick.getRightX(), 0.2) * k_maxrotspeedteleop)),
             m_swerve);
 
+        // Turret tracking with lead correction for robot movement
         Command turretTrackingCommand = run(() -> {
-            m_vision.getTurretCamera().aimAtFieldPose(m_swerve.getPose(), k_basinCenter);
+            m_vision.getTurretCamera().aimAtFieldPoseWithLead(
+                m_swerve.getPose(),
+                k_basinCenter,
+                m_swerve.getFieldSpeeds(),
+                TURRET_EXIT_VELOCITY,
+                TURRET_LAUNCH_ANGLE
+            );
         });
 
         return new ParallelCommandGroup(driveCommand, turretTrackingCommand);

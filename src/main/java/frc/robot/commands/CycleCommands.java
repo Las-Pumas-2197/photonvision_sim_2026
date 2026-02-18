@@ -24,6 +24,10 @@ public final class CycleCommands {
 
     private CycleCommands() {}
 
+    // Turret shooting constants for lead correction
+    private static final double TURRET_EXIT_VELOCITY = 8.0; // Average exit velocity (m/s)
+    private static final double TURRET_LAUNCH_ANGLE = Math.toRadians(65); // Launch angle
+
     // Tunnel tag pairs: each tunnel has a tag on each end
     // North tunnel: 22 <-> 23, South tunnel: 28 <-> 17
     private static final Map<Integer, Integer> TUNNEL_PAIRS = Map.of(
@@ -39,6 +43,14 @@ public final class CycleCommands {
         28, new Pose2d(1.5, 1, Rotation2d.fromDegrees(180)),
         22, new Pose2d(8, 7, Rotation2d.fromDegrees(270)),
         23, new Pose2d(1.5, 7, Rotation2d.fromDegrees(180))
+    );
+
+    // Fixed orientations when passing through each tunnel exit waypoint (facing 180° from travel)
+    private static final Map<Integer, Rotation2d> TUNNEL_WAYPOINT_ORIENTATIONS = Map.of(
+        17, Rotation2d.fromDegrees(270),  // Exiting south tunnel eastward, face west
+        28, Rotation2d.fromDegrees(90),   // Exiting south tunnel westward, face east
+        22, Rotation2d.fromDegrees(90),   // Exiting north tunnel eastward, face west
+        23, Rotation2d.fromDegrees(270)   // Exiting north tunnel westward, face east
     );
 
     /**
@@ -83,15 +95,26 @@ public final class CycleCommands {
                 return print("ERROR: Could not find exit tag " + exitTag);
             }
 
-            // Cross through tunnel without stopping, then continue to final position
+            // Use fixed orientation for waypoint
+            Rotation2d waypointOrientation = TUNNEL_WAYPOINT_ORIENTATIONS.get(exitTag);
+            Pose2d orientedWaypoint = new Pose2d(exitWaypoint.getTranslation(), waypointOrientation);
+
+            // Cross through tunnel at high speed without stopping, then continue to final position
+            // Higher velocity (3.5 m/s) for smoother pass-through
             Command pathfindSequence = sequence(
-                swerve.pathfindToPose(exitWaypoint, true, 2.0),
-                swerve.pathfindToPose(finalPosition, true)
+                swerve.pathfindToPose(orientedWaypoint, true, 4.0),
+                swerve.pathfindToPose(finalPosition, true, 1.0)
             );
 
-            // Turret tracking runs in parallel with pathfinding
+            // Turret tracking with lead correction runs in parallel with pathfinding
             Command turretTrackingCommand = run(() -> {
-                vision.getTurretCamera().aimAtFieldPose(swerve.getPose(), k_basinCenter);
+                vision.getTurretCamera().aimAtFieldPoseWithLead(
+                    swerve.getPose(),
+                    k_basinCenter,
+                    swerve.getFieldSpeeds(),
+                    TURRET_EXIT_VELOCITY,
+                    TURRET_LAUNCH_ANGLE
+                );
             });
 
             // Cancel sequence if manual drive input detected

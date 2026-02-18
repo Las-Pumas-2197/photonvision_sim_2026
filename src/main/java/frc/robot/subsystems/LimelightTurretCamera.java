@@ -20,6 +20,8 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
@@ -30,7 +32,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
  * Turret camera that uses PhotonVision simulation backend but publishes
  * data to Limelight-style NetworkTables for compatibility.
  *
- * In simulation, view the camera stream at http://localhost:1182
+ * In simulation, view the camera stream at http://localhost:1190
  */
 public class LimelightTurretCamera extends SubsystemBase {
 
@@ -273,6 +275,79 @@ public class LimelightTurretCamera extends SubsystemBase {
    */
   public void aimAtFieldPose(Pose2d robotPose, Pose2d targetPose) {
     setTurretYaw(calculateAngleToFieldPose(robotPose, targetPose));
+  }
+
+  /**
+   * Calculates the lead-corrected angle to aim at a field position while moving.
+   * Uses iterative refinement to account for how the adjusted aim point changes
+   * the distance, which changes time of flight, which changes the required lead.
+   *
+   * @param robotPose The current robot pose
+   * @param targetPose The field position to aim at
+   * @param fieldRelativeSpeeds The robot's field-relative velocity
+   * @param exitVelocity The projectile exit velocity (m/s)
+   * @param launchAngle The projectile launch angle above horizontal (radians)
+   * @return The lead-corrected turret yaw angle in radians
+   */
+  public double calculateLeadCorrectedAngle(
+      Pose2d robotPose,
+      Pose2d targetPose,
+      ChassisSpeeds fieldRelativeSpeeds,
+      double exitVelocity,
+      double launchAngle) {
+
+    Translation2d robotPos = robotPose.getTranslation();
+    Translation2d targetPos = targetPose.getTranslation();
+    double horizontalVelocity = exitVelocity * Math.cos(launchAngle);
+
+    // Iterative lead correction - as we aim at a different point, distance changes,
+    // which changes ToF, which changes the lead amount. 3 iterations for convergence.
+    Translation2d adjustedTarget = targetPos;
+    for (int i = 0; i < 3; i++) {
+      double distance = robotPos.getDistance(adjustedTarget);
+      double timeOfFlight = distance / horizontalVelocity;
+
+      // Calculate drift due to robot velocity during flight
+      double driftX = fieldRelativeSpeeds.vxMetersPerSecond * timeOfFlight;
+      double driftY = fieldRelativeSpeeds.vyMetersPerSecond * timeOfFlight;
+
+      // Adjust aim point to compensate for drift
+      adjustedTarget = new Translation2d(
+          targetPos.getX() - driftX,
+          targetPos.getY() - driftY
+      );
+    }
+
+    // Calculate angle to final adjusted target
+    double angleToTarget = Math.atan2(
+        adjustedTarget.getY() - robotPos.getY(),
+        adjustedTarget.getX() - robotPos.getX()
+    );
+    double robotHeading = robotPose.getRotation().getRadians();
+    double turretAngle = angleToTarget - robotHeading;
+
+    // Normalize to -PI to PI
+    while (turretAngle > Math.PI) turretAngle -= 2 * Math.PI;
+    while (turretAngle < -Math.PI) turretAngle += 2 * Math.PI;
+
+    return turretAngle;
+  }
+
+  /**
+   * Aims the turret at a field position with lead correction for robot movement.
+   * @param robotPose The current robot pose
+   * @param targetPose The field position to aim at
+   * @param fieldRelativeSpeeds The robot's field-relative velocity
+   * @param exitVelocity The projectile exit velocity (m/s)
+   * @param launchAngle The projectile launch angle above horizontal (radians)
+   */
+  public void aimAtFieldPoseWithLead(
+      Pose2d robotPose,
+      Pose2d targetPose,
+      ChassisSpeeds fieldRelativeSpeeds,
+      double exitVelocity,
+      double launchAngle) {
+    setTurretYaw(calculateLeadCorrectedAngle(robotPose, targetPose, fieldRelativeSpeeds, exitVelocity, launchAngle));
   }
 
   /**
