@@ -12,7 +12,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.subsystems.Swerve;
-import frc.robot.subsystems.Vision;
+import frc.robot.subsystems.Turret;
 
 /**
  * Factory class for autonomous command routines.
@@ -72,15 +72,16 @@ public final class Autos {
     }
 
     /** Simple square pattern auto with turret tracking. */
-    public static Command simpleSquareAuto(Swerve swerve, Vision vision) {
+    public static Command simpleSquareAuto(Swerve swerve, Turret turret) {
         SequentialCommandGroup driveSequence = new SequentialCommandGroup(
             swerve.pathfindToPose(k_squarePoint1, false),
             swerve.pathfindToPose(k_squarePoint2, false),
             swerve.pathfindToPose(k_squarePoint3, false),
             swerve.pathfindToPose(k_squarePoint4, false));
 
+        // Track the basin center during auto
         Command turretTrackingCommand = run(() -> {
-            vision.getTurretCamera().aimAtCenterOfTargets(swerve.getPose());
+            turret.aimAtFieldPose(swerve.getPose(), k_basinCenter);
         });
 
         return new ParallelDeadlineGroup(driveSequence, turretTrackingCommand);

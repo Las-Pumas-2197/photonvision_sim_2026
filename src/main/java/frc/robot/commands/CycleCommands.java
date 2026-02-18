@@ -15,7 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import frc.robot.simulation.SimulatedGameState;
 import frc.robot.subsystems.Swerve;
-import frc.robot.subsystems.Vision;
+import frc.robot.subsystems.Turret;
 
 /**
  * Factory class for teleop cycling commands.
@@ -60,10 +60,10 @@ public final class CycleCommands {
      * Cancels if any manual drive input is detected.
      *
      * @param swerve The swerve subsystem
-     * @param vision The vision subsystem
+     * @param turret The turret subsystem
      * @param cancelCondition Supplier that returns true when the command should cancel
      */
-    public static Command createCycleCommand(Swerve swerve, Vision vision, BooleanSupplier cancelCondition) {
+    public static Command createCycleCommand(Swerve swerve, Turret turret, BooleanSupplier cancelCondition) {
         return defer(() -> {
             Pose2d currentPose = swerve.getPose();
 
@@ -100,7 +100,6 @@ public final class CycleCommands {
             Pose2d orientedWaypoint = new Pose2d(exitWaypoint.getTranslation(), waypointOrientation);
 
             // Cross through tunnel at high speed without stopping, then continue to final position
-            // Higher velocity (3.5 m/s) for smoother pass-through
             Command pathfindSequence = sequence(
                 swerve.pathfindToPose(orientedWaypoint, true, 4.0),
                 swerve.pathfindToPose(finalPosition, true, 1.0)
@@ -108,7 +107,7 @@ public final class CycleCommands {
 
             // Turret tracking with lead correction runs in parallel with pathfinding
             Command turretTrackingCommand = run(() -> {
-                vision.getTurretCamera().aimAtFieldPoseWithLead(
+                turret.aimAtFieldPoseWithLead(
                     swerve.getPose(),
                     k_basinCenter,
                     swerve.getFieldSpeeds(),

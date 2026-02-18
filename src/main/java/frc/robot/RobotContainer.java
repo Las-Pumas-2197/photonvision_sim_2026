@@ -26,6 +26,7 @@ import frc.robot.commands.Autos;
 import frc.robot.commands.CycleCommands;
 import frc.robot.simulation.SimulatedGameState;
 import frc.robot.subsystems.Swerve;
+import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Vision;
 import frc.robot.utils.BlackBox;
 import frc.robot.utils.Telemetry;
@@ -47,6 +48,7 @@ public class RobotContainer {
     // Subsystems
     private final Swerve m_swerve = new Swerve();
     private final Vision m_vision = new Vision();
+    private final Turret m_turret = new Turret();
     private final Telemetry m_telemetry = new Telemetry(m_vision, m_swerve);
 
     // Simulation
@@ -61,7 +63,7 @@ public class RobotContainer {
         m_swerve.runAutoBuilder();
 
         // Configure autos
-        m_autochooser.setDefaultOption("square", Autos.simpleSquareAuto(m_swerve, m_vision));
+        m_autochooser.setDefaultOption("square", Autos.simpleSquareAuto(m_swerve, m_turret));
         m_autochooser.addOption("drive under tag 28", Autos.driveUnderTagAuto(m_swerve, 28));
         m_autochooser.addOption("autoalign reef A", Autos.autoAlignReef(m_swerve, 18));
         SmartDashboard.putData(m_autochooser);
@@ -82,7 +84,7 @@ public class RobotContainer {
     private void configureBindings() {
         m_joystick.back().onTrue(runOnce(() -> m_swerve.getCurrentCommand().cancel()));
         m_joystick.start().whileTrue(run(() -> BlackBox.DataRecorder.recordData("heading", m_swerve.getGyroHeading())));
-        m_joystick.a().onTrue(CycleCommands.createCycleCommand(m_swerve, m_vision, this::hasManualDriveInput));
+        m_joystick.a().onTrue(CycleCommands.createCycleCommand(m_swerve, m_turret, this::hasManualDriveInput));
 
         if (RobotBase.isSimulation() && m_gameState != null) {
             m_joystick.rightBumper().onTrue(runOnce(() -> m_gameState.shootFuel()));
@@ -90,7 +92,7 @@ public class RobotContainer {
             // B button: Rapid fire 10 shots from turret with calculated velocity
             m_joystick.b().onTrue(CycleCommands.createRapidFireCommand(
                 m_gameState,
-                () -> m_vision.getTurretCamera().getTurretYaw()
+                m_turret::getCurrentYaw
             ));
         }
     }
@@ -125,7 +127,7 @@ public class RobotContainer {
 
         // Turret tracking with lead correction for robot movement
         Command turretTrackingCommand = run(() -> {
-            m_vision.getTurretCamera().aimAtFieldPoseWithLead(
+            m_turret.aimAtFieldPoseWithLead(
                 m_swerve.getPose(),
                 k_basinCenter,
                 m_swerve.getFieldSpeeds(),
@@ -145,6 +147,7 @@ public class RobotContainer {
     public void testRun() {
         if (RobotBase.isSimulation() && m_gameState != null) {
             m_gameState.update();
+            m_turret.updateSimulation(0.02); // 20ms simulation step
 
             Pose3d[] fuel = m_gameState.getFuelPoses();
             double[] fuelData = new double[fuel.length * 7];
