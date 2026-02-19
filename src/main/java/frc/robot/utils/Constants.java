@@ -124,4 +124,32 @@ public class Constants {
     public static final Pose2d k_squarePoint3 = new Pose2d(1, 8, new Rotation2d(Units.degreesToRadians(180)));
     public static final Pose2d k_squarePoint4 = new Pose2d(2, 1, new Rotation2d(Units.degreesToRadians(270)));
   }
+
+  public static final class ObstacleDetectionConstants {
+    // Front camera configuration
+    public static final String k_frontCameraName = "limelight-front";
+    public static final Transform3d k_frontCameraTransform = new Transform3d(
+        Units.inchesToMeters(14),  // 14" forward from robot center
+        0,                          // Centered laterally
+        Units.inchesToMeters(10),  // 10" height
+        new Rotation3d(0, Math.toRadians(-5), 0)  // Slight downward tilt
+    );
+
+    // Detection thresholds
+    public static final double k_detectionRange = 5.0;       // meters
+    public static final double k_minConfidence = 0.5;        // 0-1 scale
+    public static final double k_obstacleStaleTime = 0.5;    // seconds
+
+    // Path safety margins
+    public static final double k_robotClearance = 0.6;       // meters from robot center
+    public static final double k_fuelClearance = 0.2;        // meters (can drive over fuel)
+
+    // Tunnel corridors (for reference - also defined in TunnelPath)
+    public static final double k_northCorridorMinY = 6.5;
+    public static final double k_northCorridorMaxY = 7.5;
+    public static final double k_southCorridorMinY = 0.5;
+    public static final double k_southCorridorMaxY = 1.5;
+    public static final double k_tunnelMinX = 1.5;
+    public static final double k_tunnelMaxX = 8.0;
+  }
 }

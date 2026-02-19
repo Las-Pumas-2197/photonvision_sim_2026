@@ -24,6 +24,8 @@ import com.pathplanner.lib.pathfinding.Pathfinding;
 
 import frc.robot.commands.Autos;
 import frc.robot.commands.CycleCommands;
+import frc.robot.commands.ObstacleAwareCycleCommands;
+import frc.robot.subsystems.FrontLimelight;
 import frc.robot.simulation.SimulatedGameState;
 import frc.robot.subsystems.Swerve;
 import frc.robot.subsystems.Turret;
@@ -49,6 +51,7 @@ public class RobotContainer {
     private final Swerve m_swerve = new Swerve();
     private final Vision m_vision = new Vision();
     private final Turret m_turret = new Turret();
+    private final FrontLimelight m_frontCamera = new FrontLimelight();
     private final Telemetry m_telemetry = new Telemetry(m_vision, m_swerve);
 
     // Simulation
@@ -84,7 +87,11 @@ public class RobotContainer {
     private void configureBindings() {
         m_joystick.back().onTrue(runOnce(() -> m_swerve.getCurrentCommand().cancel()));
         m_joystick.start().whileTrue(run(() -> BlackBox.DataRecorder.recordData("heading", m_swerve.getGyroHeading())));
-        m_joystick.a().onTrue(CycleCommands.createCycleCommand(m_swerve, m_turret, this::hasManualDriveInput));
+        // Obstacle-aware cycling (evaluates all 4 tunnel paths and selects the best open one)
+        m_joystick.a().onTrue(ObstacleAwareCycleCommands.createObstacleAwareCycleCommand(
+            m_swerve, m_turret, m_frontCamera, this::hasManualDriveInput));
+        // X button: Path diagnostic (shows path evaluation without moving)
+        m_joystick.x().onTrue(ObstacleAwareCycleCommands.createPathDiagnosticCommand(m_swerve, m_frontCamera));
 
         if (RobotBase.isSimulation() && m_gameState != null) {
             m_joystick.rightBumper().onTrue(runOnce(() -> m_gameState.shootFuel()));
@@ -149,6 +156,10 @@ public class RobotContainer {
             m_gameState.update();
             m_turret.updateSimulation(0.02); // 20ms simulation step
 
+            // Update front camera with current pose (simulation mode for testing)
+            m_frontCamera.updateDetectedRobots(m_swerve.getSimPose());
+
+            // Publish fuel poses for visualization (not used for obstacle detection)
             Pose3d[] fuel = m_gameState.getFuelPoses();
             double[] fuelData = new double[fuel.length * 7];
             for (int i = 0; i < fuel.length; i++) {
